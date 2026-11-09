@@ -1,0 +1,57 @@
+name: Deploy
+description: 'Build and deploy to Vercel with the Vercel CLI.'
+
+inputs:
+  environment:
+    description: 'Vercel environment: preview or production.'
+    required: true
+  vercel-token:
+    description: 'Vercel access token.'
+    required: true
+  vercel-org-id:
+    description: 'Vercel organization id.'
+    required: true
+  vercel-project-id:
+    description: 'Vercel project id.'
+    required: true
+
+outputs:
+  url:
+    description: 'The deployment url.'
+    value: ${{ steps.url.outputs.url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest
+      shell: 'bash'
+
+    - name: Pull Vercel environment
+      run: vercel pull --yes --environment=${{ inputs.environment }} --token="$VERCEL_TOKEN"
+      shell: 'bash'
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
+
+    - name: Build
+      run: vercel build ${{ inputs.environment == 'production' && '--prod' || '' }} --token="$VERCEL_TOKEN"
+      shell: 'bash'
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
+
+    - name: Deploy
+      run: vercel deploy --prebuilt ${{ inputs.environment == 'production' && '--prod' || '' }} --token="$VERCEL_TOKEN" > deploy.log
+      shell: 'bash'
+      env:
+        VERCEL_TOKEN: ${{ inputs.vercel-token }}
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
+
+    - name: Set deployment url
+      id: url
+      run: echo "url=$(tail -1 deploy.log)" >> "$GITHUB_OUTPUT"
+      shell: 'bash'
